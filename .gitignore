@@ -1,1 +1,5 @@
+.env
 config.ini
+*.db
+__pychache__/
+*.pyc

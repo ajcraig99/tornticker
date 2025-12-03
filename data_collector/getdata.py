@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
-
+import os
 import requests
+from dotenv import load_dotenv
 
-url = "https://api.torn.com/torn/?key=o9KYG6DYGCU1uLer&comment=tornticker&selections=items"
+# Load api key from .env
+load_dotenv()
+api_key = os.getenv('API_KEY')
+
+
+url = f"https://api.torn.com/torn/?key={api_key}&comment=tornticker&selections=items"
 
 response = requests.get(url)
 
-print(response.json())
+data = response.json()
+items = data['items']
+
+print(items['1'])

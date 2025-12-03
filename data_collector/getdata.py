@@ -15,4 +15,8 @@ response = requests.get(url)
 data = response.json()
 items = data['items']
 
-print(items['1'])
+print(items['367'])
+
+
+for i in items: 
+    print(f"ID: {i}: {items[i]['name']}, ${items[i]['market_value']}, Circulation: {items[i]['circulation']}")

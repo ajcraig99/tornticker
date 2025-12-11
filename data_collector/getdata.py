@@ -3,18 +3,28 @@ import os
 import time
 import requests
 import sqlite3
+import logging
 from datetime import date
 from dotenv import load_dotenv
 
 
+# Set up logging
+logging.basicConfig(
+    filename='logs/tornticker.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# safe_api_call settings
 MAX_RETRIES = 5
 RETRY_WAIT = 60 
 today = date.today().isoformat()
+
 # Load api key from .env
 load_dotenv()
 api_key = os.getenv('API_KEY')
 
-
+# setup up api error handling
 def safe_api_call(url):
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -22,6 +32,7 @@ def safe_api_call(url):
             data = response.json()
         except Exception as e:
             print(f"HTTP/Network error: {e}. Attempt {attempt}/{MAX_RETRIES}")
+            logging.warning(f"HTTP/Network error: {e}. Attempt {attempt}/{MAX_RETRIES}")
             time.sleep(RETRY_WAIT * attempt)
             continue
 
@@ -29,6 +40,7 @@ def safe_api_call(url):
         if "error" in data:
             code = data["error"]["code"]
             message = data["error"]["error"]
+            logging.warning(f"Torn API error {code}: {message}")
             print(f"Torn API error {code}: {message}")
 
             if code in {0, 5, 8, 15, 17, 24}:  # retryable
@@ -36,7 +48,9 @@ def safe_api_call(url):
                 time.sleep(RETRY_WAIT * attempt)
                 continue
             else:  # fatal
+                logging.error(f"Fatal API error {code}: {message}")
                 raise Exception(f"Fatal API error {code}: {message}")
+                
 
         # Success
         return data
@@ -45,11 +59,12 @@ def safe_api_call(url):
     raise Exception(f"Failed to fetch API after {MAX_RETRIES} retries")
 
 
-# Create DB's if they don't exist, or connect to existing ones.
-#
+# Create DB if it doesn't exist, or connect to an existing one.
 conn = sqlite3.connect("tornticker.db")
 cursor = conn.cursor()
 
+
+# Create table for items, mostly static values
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,6 +79,7 @@ CREATE TABLE IF NOT EXISTS items (
 )
 """)
 
+# Main data collection table
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS data (
     id INTEGER,
@@ -76,6 +92,9 @@ CREATE TABLE IF NOT EXISTS data (
     FOREIGN KEY (id) REFERENCES items(id)
 )
 """)
+
+
+# Add or update main item data into items table. "last_update" is used to discover new items.
 
 def upsert_item(cursor, item):
     """
@@ -126,7 +145,7 @@ def upsert_item(cursor, item):
         today
     ))
 
-
+# Add data daily to data table
 def upsert_data(cursor, item, date_str=None):
     """
     Insert or update a row in the 'data' table for a specific item and date.
@@ -150,39 +169,42 @@ def upsert_data(cursor, item, date_str=None):
         circulation = excluded.circulation
     """, (item_id, date_str, buy_price, sell_price, market_value, circulation))
 
+# Check if an update has already run today, skip if it has
+
+today = date.today().isoformat()
+cursor.execute("SELECT COUNT(*) FROM data WHERE date = ?", (today,))
+count = cursor.fetchone()[0]
+
+if count > 0:
+    print(f"Data already exists for {today}, skipping update")
+else:
+    print(f"No data for {today}, running update...")
+    # api url and store response in "data"
+    url = f"https://api.torn.com/torn/?key={api_key}&comment=tornticker&selections=items"
+    data = safe_api_call(url)
+    items = data["items"]
+
+    for item_id, item in items.items():
+        upsert_item(cursor, {
+            "id": item_id,                
+            "name": item.get("name", ""),
+            "description": item.get("description", ""),
+            "effect": item.get("effect", ""),
+            "type": item.get("type", ""),
+            "weapon_type": item.get("weapon_type", ""),
+            "image": item.get("image", ""),
+            "tradeable": item.get("tradeable", "")
+        })
+        upsert_data(cursor, {
+            "id": item_id,
+            "buy_price": item.get("buy_price", 0),
+            "sell_price": item.get("sell_price", 0),
+            "market_value": item.get("market_value", 0),
+            "circulation": item.get("circulation", 0)
+        })
 
 
-url = f"https://api.torn.com/torn/?key={api_key}&comment=tornticker&selections=items"
-data = safe_api_call(url)
-#response = requests.get(url)
-#data = response.json()
-items = data["items"]
-
-
-for item_id, item in items.items():
-    upsert_item(cursor, {
-        "id": item_id,                
-        "name": item.get("name", ""),
-        "description": item.get("description", ""),
-        "effect": item.get("effect", ""),
-        "type": item.get("type", ""),
-        "weapon_type": item.get("weapon_type", ""),
-        "image": item.get("image", ""),
-        "tradeable": item.get("tradeable", "")
-    })
-    upsert_data(cursor, {
-        "id": item_id,
-        "buy_price": item.get("buy_price", 0),
-        "sell_price": item.get("sell_price", 0),
-        "market_value": item.get("market_value", 0),
-        "circulation": item.get("circulation", 0)
-    })
-
-#for i in items:
-#    print(f"ID: {i}: {items[i]['name']}, ${items[i]['market_value']}, Circulation: {items[i]['circulation']}")
-#
-#
-#
+# Close the DB connection when we're done.
 conn.commit()
 conn.close()
 

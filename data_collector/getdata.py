@@ -7,6 +7,9 @@ import logging
 from datetime import date
 from dotenv import load_dotenv
 
+# Create logs directory if it doesn't exist
+log_dir = '/root/tornticker/data_collector/logs'
+os.makedirs(log_dir, exist_ok=True)
 
 # Set up logging
 logging.basicConfig(

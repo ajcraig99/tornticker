@@ -29,6 +29,7 @@ logging.basicConfig(
 MAX_RETRIES = 5
 RETRY_WAIT = 60 
 today = date.today().isoformat()
+current_time = date.now().strftime("%H:%M:%S")
 
 # Load api key from .env
 load_dotenv()
@@ -40,7 +41,7 @@ def safe_api_call(url):
         try:
             response = requests.get(url, timeout=10)
             data = response.json()
-            logging.info(f"API response recieved at {today}")
+            logging.info(f"API response recieved at {today} - {current_time}")
         except Exception as e:
             print(f"HTTP/Network error: {e}. Attempt {attempt}/{MAX_RETRIES}")
             logging.warning(f"HTTP/Network error: {e}. Attempt {attempt}/{MAX_RETRIES}")

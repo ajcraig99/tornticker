@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 import time
 import requests
 import sqlite3
@@ -7,13 +8,18 @@ import logging
 from datetime import date
 from dotenv import load_dotenv
 
+# Get the directory where this script lives
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Change to script directory so relative paths work
+os.chdir(SCRIPT_DIR)
+
 # Create logs directory if it doesn't exist
-log_dir = '/root/tornticker/data_collector/logs'
+log_dir = 'logs'
 os.makedirs(log_dir, exist_ok=True)
 
 # Set up logging
 logging.basicConfig(
-    filename=f'{log_dir}/tornticker.log',
+    filename='logs/tornticker.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )

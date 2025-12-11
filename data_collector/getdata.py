@@ -13,10 +13,11 @@ os.makedirs(log_dir, exist_ok=True)
 
 # Set up logging
 logging.basicConfig(
-    filename='logs/tornticker.log',
+    filename=f'{log_dir}/tornticker.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
 
 # safe_api_call settings
 MAX_RETRIES = 5
@@ -33,6 +34,7 @@ def safe_api_call(url):
         try:
             response = requests.get(url, timeout=10)
             data = response.json()
+            logging.info(f"API response recieved at {today}")
         except Exception as e:
             print(f"HTTP/Network error: {e}. Attempt {attempt}/{MAX_RETRIES}")
             logging.warning(f"HTTP/Network error: {e}. Attempt {attempt}/{MAX_RETRIES}")

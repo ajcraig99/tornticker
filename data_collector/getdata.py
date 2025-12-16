@@ -6,7 +6,7 @@ import requests
 import sqlite3
 import logging
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import date, datetime
 # Get the directory where this script lives
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Change to script directory so relative paths work

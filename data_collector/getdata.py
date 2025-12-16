@@ -5,9 +5,8 @@ import time
 import requests
 import sqlite3
 import logging
-from datetime import date
 from dotenv import load_dotenv
-
+from datetime import datetime
 # Get the directory where this script lives
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Change to script directory so relative paths work
@@ -29,7 +28,7 @@ logging.basicConfig(
 MAX_RETRIES = 5
 RETRY_WAIT = 60 
 today = date.today().isoformat()
-current_time = date.now().strftime("%H:%M:%S")
+current_time = datetime.now().strftime("%H:%M:%S")
 
 # Load api key from .env
 load_dotenv()
